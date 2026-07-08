@@ -1,0 +1,187 @@
+trigger:
+  - main
+
+pool:
+  name: Default
+
+variables:
+  - name: workingDirectory
+    value: '$(System.DefaultWorkingDirectory)/terraform'
+  - group: vandermeer-secrets
+
+stages:
+  - stage: Validate
+    displayName: 'Validate'
+    jobs:
+      - job: TerraformValidate
+        displayName: 'Terraform validate'
+        steps:
+          - task: TerraformInstaller@1
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: 'latest'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform init'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(workingDirectory)'
+              backendServiceArm: 'azure-lab-portfolio'
+              backendAzureRmResourceGroupName: 'rg-tfstate-demo'
+              backendAzureRmStorageAccountName: 'sttfstatejh01'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'vandermeer-terraform.tfstate'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform validate'
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+              workingDirectory: '$(workingDirectory)'
+
+  - stage: Plan
+    displayName: 'Plan'
+    dependsOn: Validate
+    jobs:
+      - job: TerraformPlan
+        displayName: 'Terraform plan'
+        steps:
+          - task: TerraformInstaller@1
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: 'latest'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform init'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(workingDirectory)'
+              backendServiceArm: 'azure-lab-portfolio'
+              backendAzureRmResourceGroupName: 'rg-tfstate-demo'
+              backendAzureRmStorageAccountName: 'sttfstatejh01'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'vandermeer-terraform.tfstate'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform plan'
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              workingDirectory: '$(workingDirectory)'
+              environmentServiceNameAzureRM: 'azure-lab-portfolio'
+              commandOptions: >-
+                -var="admin_password=$(VM_ADMIN_PASSWORD)"
+                -var="vpn_root_certificate=$(VPN_ROOT_CERTIFICATE)"
+
+  - stage: Apply
+    displayName: 'Apply'
+    dependsOn: Plan
+    jobs:
+      - job: ManualApproval
+        displayName: 'Wait for approval'
+        pool: server
+        steps:
+          - task: ManualValidation@0
+            displayName: 'Approve infrastructure changes'
+            inputs:
+              notifyUsers: ''
+              instructions: 'Review the Terraform plan output and approve to proceed with infrastructure provisioning.'
+              onTimeout: 'reject'
+              timeout: '1440'
+
+      - job: TerraformApply
+        displayName: 'Terraform apply'
+        dependsOn: ManualApproval
+        steps:
+          - task: TerraformInstaller@1
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: 'latest'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform init'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(workingDirectory)'
+              backendServiceArm: 'azure-lab-portfolio'
+              backendAzureRmResourceGroupName: 'rg-tfstate-demo'
+              backendAzureRmStorageAccountName: 'sttfstatejh01'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'vandermeer-terraform.tfstate'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform apply'
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              workingDirectory: '$(workingDirectory)'
+              environmentServiceNameAzureRM: 'azure-lab-portfolio'
+              commandOptions: >-
+                -var="admin_password=$(VM_ADMIN_PASSWORD)"
+                -var="vpn_root_certificate=$(VPN_ROOT_CERTIFICATE)"
+
+  - stage: Verify
+    displayName: 'Verify'
+    dependsOn: Apply
+    jobs:
+      - job: Verify
+        displayName: 'Verify infrastructure'
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Verify domain controller is running'
+            inputs:
+              azureSubscription: 'azure-lab-portfolio'
+              scriptType: 'batch'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az vm show --resource-group rg-vandermeer-lab --name vm-dc-lab-01 --query "provisioningState" -o tsv
+                az vm get-instance-view --resource-group rg-vandermeer-lab --name vm-dc-lab-01 --query "instanceView.statuses[1].displayStatus" -o tsv
+
+          - task: AzureCLI@2
+            displayName: 'Verify management server is running'
+            inputs:
+              azureSubscription: 'azure-lab-portfolio'
+              scriptType: 'batch'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az vm show --resource-group rg-vandermeer-lab --name vm-mgmt-lab-01 --query "provisioningState" -o tsv
+                az vm get-instance-view --resource-group rg-vandermeer-lab --name vm-mgmt-lab-01 --query "instanceView.statuses[1].displayStatus" -o tsv
+
+  - stage: Destroy
+    displayName: 'Destroy'
+    dependsOn: Verify
+    condition: always()
+    jobs:
+      - job: TerraformDestroy
+        displayName: 'Terraform destroy'
+        steps:
+          - task: TerraformInstaller@1
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: 'latest'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform init'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(workingDirectory)'
+              backendServiceArm: 'azure-lab-portfolio'
+              backendAzureRmResourceGroupName: 'rg-tfstate-demo'
+              backendAzureRmStorageAccountName: 'sttfstatejh01'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'vandermeer-terraform.tfstate'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform destroy'
+            inputs:
+              provider: 'azurerm'
+              command: 'destroy'
+              workingDirectory: '$(workingDirectory)'
+              environmentServiceNameAzureRM: 'azure-lab-portfolio'
+              commandOptions: >-
+                -var="admin_password=$(VM_ADMIN_PASSWORD)"
+                -var="vpn_root_certificate=$(VPN_ROOT_CERTIFICATE)"
