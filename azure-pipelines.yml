@@ -120,6 +120,7 @@ stages:
               workingDirectory: '$(workingDirectory)'
               environmentServiceNameAzureRM: 'azure-lab-portfolio'
               commandOptions: >-
+                -parallelism=5
                 -var="admin_password=$(VM_ADMIN_PASSWORD)"
                 -var="vpn_root_certificate=$(VPN_ROOT_CERTIFICATE)"
 
@@ -183,5 +184,6 @@ stages:
               workingDirectory: '$(workingDirectory)'
               environmentServiceNameAzureRM: 'azure-lab-portfolio'
               commandOptions: >-
+                -parallelism=5
                 -var="admin_password=$(VM_ADMIN_PASSWORD)"
                 -var="vpn_root_certificate=$(VPN_ROOT_CERTIFICATE)"
