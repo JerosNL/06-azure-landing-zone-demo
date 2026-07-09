@@ -4,33 +4,29 @@ Configuration ManagementServer {
 
     Node localhost {
 
-        WindowsFeature RSAT {
+        WindowsFeature RSATADTools {
             Ensure = 'Present'
-            Name   = 'RSAT'
+            Name   = 'RSAT-AD-Tools'
         }
 
-        WindowsFeature RSATADTools {
-            Ensure    = 'Present'
-            Name      = 'RSAT-AD-Tools'
-            DependsOn = '[WindowsFeature]RSAT'
+        WindowsFeature RSATADPowerShell {
+            Ensure = 'Present'
+            Name   = 'RSAT-AD-PowerShell'
         }
 
         WindowsFeature RSATDNSTools {
-            Ensure    = 'Present'
-            Name      = 'RSAT-DNS-Server'
-            DependsOn = '[WindowsFeature]RSAT'
+            Ensure = 'Present'
+            Name   = 'RSAT-DNS-Server'
         }
 
         WindowsFeature RSATGPOTools {
-            Ensure    = 'Present'
-            Name      = 'GPMC'
-            DependsOn = '[WindowsFeature]RSAT'
+            Ensure = 'Present'
+            Name   = 'GPMC'
         }
 
         WindowsFeature RSATDHCPTools {
-            Ensure    = 'Present'
-            Name      = 'RSAT-DHCP'
-            DependsOn = '[WindowsFeature]RSAT'
+            Ensure = 'Present'
+            Name   = 'RSAT-DHCP'
         }
     }
 }

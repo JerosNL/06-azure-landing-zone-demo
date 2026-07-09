@@ -71,9 +71,9 @@ variable "vpn_root_certificate" {
 }
 
 variable "vpn_gateway_sku" {
-  description = "SKU for the VPN Gateway. Basic supports 10 connections, VpnGw1 supports 250"
+  description = "SKU for the VPN Gateway. VpnGw1AZ supports 250 connections with availability zones"
   type        = string
-  default     = "VpnGw1"
+  default     = "VpnGw1AZ"
 }
 
 variable "resource_group_name" {
