@@ -42,38 +42,39 @@ foreach ($module in $modules) {
     }
 }
 
-Write-Host "Packaging DSC configurations..." -ForegroundColor Cyan
+Write-Host "Packaging DomainController DSC configuration..." -ForegroundColor Cyan
 
-$configurations = @(
-    @{
-        Script   = 'DomainController.ps1'
-        ZipName  = 'DomainController.ps1.zip'
-    },
-    @{
-        Script   = 'ManagementServer.ps1'
-        ZipName  = 'ManagementServer.ps1.zip'
+$dcStagingPath = "$env:TEMP\DomainControllerDSC"
+if (Test-Path $dcStagingPath) { Remove-Item $dcStagingPath -Recurse -Force }
+New-Item -ItemType Directory -Path $dcStagingPath | Out-Null
+
+Copy-Item "$DscPath\DomainController.ps1" $dcStagingPath
+
+$moduleBase = ($env:PSModulePath -split ';') | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+foreach ($module in $modules) {
+    $modulePath = Get-Module -ListAvailable -Name $module | Select-Object -First 1 -ExpandProperty ModuleBase
+    if ($modulePath) {
+        $moduleParent = Split-Path $modulePath -Parent
+        Copy-Item $moduleParent -Destination "$dcStagingPath\$module" -Recurse -Force
+        Write-Host "  Bundled module: $module" -ForegroundColor Green
     }
-)
-
-foreach ($config in $configurations) {
-    $scriptPath = Join-Path $DscPath $config.Script
-    $zipPath    = Join-Path $OutputPath $config.ZipName
-
-    if (-not (Test-Path $scriptPath)) {
-        Write-Error "DSC script not found: $scriptPath"
-        continue
+    else {
+        Write-Error "Module $module not found"
     }
-
-    if (Test-Path $zipPath) {
-        Remove-Item $zipPath -Force
-    }
-
-    Write-Host "  Packaging $($config.Script)..." -ForegroundColor Yellow
-
-    Compress-Archive -Path $scriptPath -DestinationPath $zipPath -Force
-
-    Write-Host "  Created $($config.ZipName)" -ForegroundColor Green
 }
+
+$dcZipPath = "$OutputPath\DomainController.ps1.zip"
+if (Test-Path $dcZipPath) { Remove-Item $dcZipPath -Force }
+Compress-Archive -Path "$dcStagingPath\*" -DestinationPath $dcZipPath -Force
+Write-Host "  Created DomainController.ps1.zip" -ForegroundColor Green
+
+Write-Host "Packaging ManagementServer DSC configuration..." -ForegroundColor Cyan
+
+$mgmtZipPath = "$OutputPath\ManagementServer.ps1.zip"
+if (Test-Path $mgmtZipPath) { Remove-Item $mgmtZipPath -Force }
+Compress-Archive -Path "$DscPath\ManagementServer.ps1" -DestinationPath $mgmtZipPath -Force
+Write-Host "  Created ManagementServer.ps1.zip" -ForegroundColor Green
 
 Write-Host "DSC packaging complete." -ForegroundColor Cyan
 Write-Host "Commit the zip files in the dsc/ folder before running the pipeline." -ForegroundColor Yellow
