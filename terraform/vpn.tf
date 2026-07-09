@@ -3,7 +3,7 @@ resource "azurerm_public_ip" "vpn_gateway" {
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
   allocation_method   = "Static"
-  sku                 = "Basic"
+  sku                 = "Standard"
 
   tags = {
     managed_by = "terraform"

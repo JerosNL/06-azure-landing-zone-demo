@@ -49,13 +49,13 @@ variable "dc_count" {
 variable "dc_vm_size" {
   description = "VM size for domain controllers"
   type        = string
-  default     = "Standard_B2s_v2"
+  default     = "Standard_D2s_v3"
 }
 
 variable "mgmt_vm_size" {
   description = "VM size for management server"
   type        = string
-  default     = "Standard_B2s_v2"
+  default     = "Standard_D2s_v3"
 }
 
 variable "mgmt_count" {
@@ -73,7 +73,7 @@ variable "vpn_root_certificate" {
 variable "vpn_gateway_sku" {
   description = "SKU for the VPN Gateway. Basic supports 10 connections, VpnGw1 supports 250"
   type        = string
-  default     = "Basic"
+  default     = "VpnGw1"
 }
 
 variable "resource_group_name" {
